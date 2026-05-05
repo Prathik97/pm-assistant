@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PM Assistant</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,600;1,300&display=swap');
+  :root {
+    --bg:#0f0f0d;--surface:#1a1a17;--surface2:#222220;--border:#2e2e2a;
+    --accent:#c8f060;--accent-dim:#8aaa3a;--text:#e8e8e0;--text-muted:#888880;
+    --text-dim:#555550;--user-bubble:#1e2a0f;--ai-bubble:#1a1a17;
+    --danger:#ff6b5b;--warning:#f0c060;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;font-size:13px;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+
+  /* HEADER */
+  .header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;}
+  .logo{display:flex;align-items:center;gap:10px;}
+  .logo-mark{width:28px;height:28px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--bg);font-weight:500;}
+  .logo-text{font-family:'Fraunces',serif;font-size:16px;font-weight:600;color:var(--text);letter-spacing:-0.3px;}
+  .logo-sub{font-size:10px;color:var(--text-muted);letter-spacing:0.5px;text-transform:uppercase;}
+  .key-btn{background:var(--surface2);color:var(--text-muted);border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;}
+  .key-btn:hover{color:var(--text);}
+
+  /* LAYOUT */
+  .layout{display:flex;flex:1;overflow:hidden;}
+
+  /* SIDEBAR */
+  .sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;}
+  .sidebar-header{padding:12px 16px;font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+  .new-btn{background:var(--accent);color:var(--bg);border:none;border-radius:4px;padding:4px 9px;font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;font-weight:500;}
+  .new-btn:hover{opacity:0.85;}
+  .projects-list{flex:1;overflow-y:auto;padding:8px 0;}
+  .project-item{padding:9px 16px;cursor:pointer;border-left:2px solid transparent;transition:all 0.15s;display:flex;align-items:center;gap:8px;}
+  .project-item:hover{background:var(--surface2);}
+  .project-item.active{border-left-color:var(--accent);background:var(--surface2);}
+  .project-dot{width:6px;height:6px;border-radius:50%;background:var(--text-dim);flex-shrink:0;}
+  .project-item.active .project-dot{background:var(--accent);}
+  .project-name{font-size:12px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .project-item.active .project-name{color:var(--accent);}
+  .project-delete{margin-left:auto;font-size:15px;color:var(--text-dim);opacity:0;line-height:1;transition:opacity 0.15s;}
+  .project-item:hover .project-delete{opacity:1;}
+  .project-delete:hover{color:var(--danger);}
+  .empty-projects{padding:20px 16px;font-size:11px;color:var(--text-dim);line-height:1.7;}
+
+  /* MAIN */
+  .main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+  .title-bar{padding:10px 20px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:8px;flex-shrink:0;background:var(--surface);}
+  .title-bar strong{color:var(--accent);}
+  .iter-badge{margin-left:auto;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:2px 10px;font-size:10px;color:var(--text-muted);}
+
+  /* MESSAGES */
+  .messages-wrap{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:16px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+  .messages-wrap::-webkit-scrollbar{width:4px;}
+  .messages-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+  /* WELCOME */
+  .welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:40px;text-align:center;flex:1;}
+  .welcome h2{font-family:'Fraunces',serif;font-size:22px;font-weight:300;font-style:italic;color:var(--text);}
+  .welcome p{font-size:12px;color:var(--text-muted);max-width:360px;line-height:1.7;}
+  .welcome-steps{display:flex;flex-direction:column;gap:8px;margin-top:8px;text-align:left;width:100%;max-width:340px;}
+  .welcome-step{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;}
+  .step-num{color:var(--accent);font-size:11px;font-weight:500;flex-shrink:0;margin-top:1px;}
+  .step-text{font-size:11px;color:var(--text-muted);line-height:1.5;}
+
+  /* MESSAGES */
+  .msg{display:flex;flex-direction:column;gap:6px;max-width:85%;animation:fadeUp 0.2s ease;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+  .msg.user{align-self:flex-end;align-items:flex-end;}
+  .msg.ai{align-self:flex-start;align-items:flex-start;}
+  .msg-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.8px;}
+  .msg-bubble{padding:12px 16px;border-radius:10px;line-height:1.7;font-size:13px;}
+  .msg.user .msg-bubble{background:var(--user-bubble);border:1px solid #2a3a10;color:var(--accent);border-radius:10px 10px 2px 10px;}
+  .msg.ai .msg-bubble{background:var(--ai-bubble);border:1px solid var(--border);color:var(--text);border-radius:10px 10px 10px 2px;}
+  .msg.ai .msg-bubble.prd{font-size:13px;line-height:1.8;max-height:620px;overflow-y:auto;border-color:var(--accent-dim);padding:20px 24px;}
+  .msg.ai .msg-bubble.prd::-webkit-scrollbar{width:4px;}
+  .msg.ai .msg-bubble.prd::-webkit-scrollbar-thumb{background:var(--accent-dim);}
+  .msg.ai{max-width:92%;}
+  .prd h1{font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--accent);margin:0 0 16px 0;padding-bottom:10px;border-bottom:1px solid var(--accent-dim);}
+  .prd h2{font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:var(--text);margin:22px 0 10px 0;padding:8px 12px;background:var(--surface2);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;}
+  .prd h3{font-size:12px;font-weight:500;color:var(--accent-dim);margin:14px 0 6px 0;text-transform:uppercase;letter-spacing:0.6px;}
+  .prd p{margin:6px 0;color:var(--text);line-height:1.7;}
+  .prd ul,.prd ol{margin:6px 0 10px 0;padding-left:20px;}
+  .prd li{margin:4px 0;color:var(--text);line-height:1.6;}
+  .prd li::marker{color:var(--accent-dim);}
+  .prd strong{color:var(--text);font-weight:500;}
+  .prd em{color:var(--text-muted);font-style:italic;}
+  .prd table{width:100%;border-collapse:collapse;margin:12px 0;font-size:12px;}
+  .prd table th{background:var(--surface2);color:var(--accent);font-weight:500;padding:9px 12px;text-align:left;border:1px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:0.4px;}
+  .prd table td{padding:8px 12px;border:1px solid var(--border);color:var(--text);vertical-align:top;line-height:1.5;}
+  .prd table tr:nth-child(even) td{background:rgba(255,255,255,0.02);}
+  .prd table tr:hover td{background:rgba(200,240,96,0.04);}
+  .prd hr{border:none;border-top:1px solid var(--border);margin:16px 0;}
+  .prd code{background:var(--surface2);padding:2px 6px;border-radius:4px;font-size:11px;color:var(--accent-dim);}
+
+  .status-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.5px;}
+  .pill-rejected{background:rgba(255,107,91,0.1);border:1px solid rgba(255,107,91,0.3);color:var(--danger);}
+  .pill-caution{background:rgba(240,192,96,0.1);border:1px solid rgba(240,192,96,0.3);color:var(--warning);}
+  .pill-proceed{background:rgba(200,240,96,0.1);border:1px solid rgba(200,240,96,0.3);color:var(--accent);}
+
+  .copy-btn{background:var(--accent);color:var(--bg);border:none;border-radius:6px;padding:6px 14px;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;font-weight:500;margin-top:4px;transition:opacity 0.15s;}
+  .copy-btn:hover{opacity:0.85;}
+
+  /* TYPING */
+  .typing-indicator{display:flex;align-items:center;gap:4px;padding:12px 16px;background:var(--ai-bubble);border:1px solid var(--border);border-radius:10px 10px 10px 2px;width:fit-content;}
+  .typing-indicator span{width:5px;height:5px;background:var(--text-dim);border-radius:50%;animation:bounce 1.2s infinite;}
+  .typing-indicator span:nth-child(2){animation-delay:0.2s;}
+  .typing-indicator span:nth-child(3){animation-delay:0.4s;}
+  @keyframes bounce{0%,60%,100%{transform:translateY(0);}30%{transform:translateY(-5px);background:var(--accent);}}
+
+  /* INPUT */
+  .input-area{padding:14px 20px;border-top:1px solid var(--border);background:var(--surface);flex-shrink:0;}
+  .input-wrapper{display:flex;gap:10px;align-items:flex-end;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;transition:border-color 0.15s;}
+  .input-wrapper:focus-within{border-color:var(--accent-dim);}
+  textarea{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;resize:none;line-height:1.6;min-height:20px;max-height:120px;overflow-y:auto;}
+  textarea::placeholder{color:var(--text-dim);}
+  .send-btn{background:var(--accent);border:none;border-radius:6px;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity 0.15s;color:var(--bg);font-size:16px;line-height:1;}
+  .send-btn:hover{opacity:0.85;}
+  .send-btn:disabled{opacity:0.3;cursor:not-allowed;}
+  .input-hint{font-size:10px;color:var(--text-dim);margin-top:6px;padding:0 2px;}
+
+  /* API KEY MODAL */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1000;align-items:center;justify-content:center;}
+  .modal-overlay.show{display:flex;}
+  .modal-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px;width:420px;max-width:90vw;display:flex;flex-direction:column;gap:16px;}
+  .modal-title{font-family:'Fraunces',serif;font-size:18px;font-weight:300;font-style:italic;color:var(--text);}
+  .modal-desc{font-size:12px;color:var(--text-muted);line-height:1.7;}
+  .modal-hint{font-size:11px;color:var(--text-dim);line-height:1.6;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;}
+  .modal-hint strong{color:var(--accent);}
+  .modal-input{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;outline:none;width:100%;transition:border-color 0.15s;}
+  .modal-input:focus{border-color:var(--accent-dim);}
+  .modal-error{font-size:11px;color:var(--danger);min-height:16px;}
+  .modal-actions{display:flex;gap:10px;}
+  .modal-save{flex:1;background:var(--accent);color:var(--bg);border:none;border-radius:8px;padding:10px;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;cursor:pointer;transition:opacity 0.15s;}
+  .modal-save:hover{opacity:0.85;}
+  .modal-clear{background:transparent;color:var(--text-dim);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;}
+  .modal-clear:hover{color:var(--danger);border-color:var(--danger);}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo">
+    <div class="logo-mark">P</div>
+    <div>
+      <div class="logo-text">PM Assistant</div>
+      <div class="logo-sub">AI PRD Co-pilot</div>
+    </div>
+  </div>
+  <button class="key-btn" onclick="openModal()">⚙ API Key</button>
+</div>
+
+<!-- API KEY MODAL -->
+<div class="modal-overlay" id="apiModal">
+  <div class="modal-box">
+    <div class="modal-title">Connect to Claude</div>
+    <div class="modal-desc">PM Assistant uses the Anthropic API. Your key is stored only in your browser — never sent anywhere except Anthropic's servers.</div>
+    <div class="modal-hint">Get your key at <strong>console.anthropic.com</strong> → API Keys → Create Key. Add a small credit ($5 is plenty — each PRD costs fractions of a cent).</div>
+    <input class="modal-input" id="keyInput" type="password" placeholder="sk-ant-api03-..." onkeydown="if(event.key==='Enter')saveKey()"/>
+    <div class="modal-error" id="keyError"></div>
+    <div class="modal-actions">
+      <button class="modal-save" onclick="saveKey()">Save &amp; Continue</button>
+      <button class="modal-clear" onclick="clearKey()">Clear Key</button>
+    </div>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      Projects
+      <button class="new-btn" onclick="newProject()">+ New</button>
+    </div>
+    <div id="newProjectForm" style="display:none;flex-direction:column;gap:6px;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--surface2);">
+      <input id="newProjectInput" type="text" placeholder="Project name..."
+        style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;outline:none;width:100%;"
+        onkeydown="if(event.key==='Enter')createProject();if(event.key==='Escape')document.getElementById('newProjectForm').style.display='none';"
+        onfocus="this.style.borderColor='var(--accent-dim)'"
+        onblur="this.style.borderColor='var(--border)'"/>
+      <div style="display:flex;gap:6px;">
+        <button onclick="createProject()" style="flex:1;background:var(--accent);color:var(--bg);border:none;border-radius:5px;padding:6px;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;cursor:pointer;">Create</button>
+        <button onclick="document.getElementById('newProjectForm').style.display='none'" style="background:transparent;color:var(--text-dim);border:1px solid var(--border);border-radius:5px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;">✕</button>
+      </div>
+    </div>
+    <div class="projects-list" id="projectsList"></div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="title-bar">
+      <strong id="projTitle">Select or create a project</strong>
+      <div class="iter-badge" id="iterBadge" style="display:none">Iteration <span id="iterNum">0</span> / 3</div>
+    </div>
+
+    <div class="messages-wrap" id="messagesWrap">
+      <!-- Welcome shown when no project active -->
+      <div class="welcome" id="welcomeScreen">
+        <div style="font-size:36px;margin-bottom:8px;">⌘</div>
+        <h2>Your PRD, drafted in minutes.</h2>
+        <p>Paste a problem statement, answer five questions, get a complete 10-section AI PRD ready to hand to your team.</p>
+        <div class="welcome-steps">
+          <div class="welcome-step"><div class="step-num">01</div><div class="step-text">Click "+ New" to start a project</div></div>
+          <div class="welcome-step"><div class="step-num">02</div><div class="step-text">Paste your problem statement — specific user, specific pain, clear outcome</div></div>
+          <div class="welcome-step"><div class="step-num">03</div><div class="step-text">Answer 5 questions and receive your full 10-section PRD</div></div>
+        </div>
+      </div>
+      <!-- Messages injected here by JS -->
+    </div>
+
+    <div class="input-area">
+      <div class="input-wrapper">
+        <textarea id="userInput" placeholder="Type your problem statement or reply here..." rows="1"
+          onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">↑</button>
+      </div>
+      <div class="input-hint">Enter to send · Shift+Enter for new line</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────────────────
+let projects = {};
+let currentId = null;
+let apiKey = '';
+
+try { projects = JSON.parse(localStorage.getItem('pm_projects') || '{}'); } catch(e) { projects = {}; }
+try { apiKey = localStorage.getItem('pm_api_key') || ''; } catch(e) {}
+
+// ── API KEY MODAL ──────────────────────────────────────────────────────────────
+function openModal() {
+  document.getElementById('keyInput').value = apiKey;
+  document.getElementById('keyError').textContent = '';
+  document.getElementById('apiModal').classList.add('show');
+  setTimeout(() => document.getElementById('keyInput').focus(), 100);
+}
+
+function closeModal() {
+  document.getElementById('apiModal').classList.remove('show');
+}
+
+function saveKey() {
+  const val = document.getElementById('keyInput').value.trim();
+  if (!val) { document.getElementById('keyError').textContent = 'Please enter your API key.'; return; }
+  if (!val.startsWith('sk-ant-')) { document.getElementById('keyError').textContent = 'Key should start with sk-ant- — check and try again.'; return; }
+  apiKey = val;
+  try { localStorage.setItem('pm_api_key', apiKey); } catch(e) {}
+  closeModal();
+}
+
+function clearKey() {
+  if (!confirm('Remove saved API key?')) return;
+  apiKey = '';
+  try { localStorage.removeItem('pm_api_key'); } catch(e) {}
+  document.getElementById('keyInput').value = '';
+  document.getElementById('keyError').textContent = 'Key cleared.';
+}
+
+// Close modal clicking outside
+document.getElementById('apiModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ── PROJECT MANAGEMENT ─────────────────────────────────────────────────────────
+function newProject() {
+  if (!apiKey) { openModal(); return; }
+  const form = document.getElementById('newProjectForm');
+  const inp = document.getElementById('newProjectInput');
+  form.style.display = form.style.display === 'none' ? 'flex' : 'none';
+  if (form.style.display === 'flex') setTimeout(() => inp.focus(), 50);
+}
+
+function createProject() {
+  const inp = document.getElementById('newProjectInput');
+  const name = inp.value.trim();
+  if (!name) { inp.focus(); return; }
+  inp.value = '';
+  document.getElementById('newProjectForm').style.display = 'none';
+  const id = 'proj_' + Date.now();
+  projects[id] = { name, messages: [], iteration: 0, phase: 'awaiting_statement', problemStatement: '' };
+  save();
+  switchTo(id);
+  addAI("Got it — starting PRD for **" + name + "**.\n\nPaste your problem statement below. Be specific: who is affected, what is broken today, and why it matters to the business.");
+  renderSidebar();
+}
+
+function switchTo(id) {
+  currentId = id;
+  const proj = projects[id];
+  // Update title
+  document.getElementById('projTitle').textContent = proj.name;
+  // Hide welcome, clear messages
+  document.getElementById('welcomeScreen').style.display = 'none';
+  clearMessages();
+  // Replay
+  proj.messages.forEach(m => {
+    if (m.role === 'user') appendUser(m.content);
+    else appendAI(m.content, m.isPRD || false, m.status || null);
+  });
+  updateBadge();
+  renderSidebar();
+  document.getElementById('userInput').focus();
+}
+
+function deleteProject(id, e) {
+  e.stopPropagation();
+  delete projects[id];
+  save();
+  if (currentId === id) {
+    currentId = null;
+    document.getElementById('projTitle').textContent = 'Select or create a project';
+    clearMessages();
+    document.getElementById('welcomeScreen').style.display = 'flex';
+    document.getElementById('iterBadge').style.display = 'none';
+  }
+  renderSidebar();
+}
+
+function renderSidebar() {
+  const list = document.getElementById('projectsList');
+  const ids = Object.keys(projects);
+  if (!ids.length) {
+    list.innerHTML = '<div class="empty-projects">No projects yet.<br>Click "+ New" to start.</div>';
+    return;
+  }
+  list.innerHTML = ids.reverse().map(id => `
+    <div class="project-item ${id === currentId ? 'active' : ''}" onclick="switchTo('${id}')">
+      <div class="project-dot"></div>
+      <div class="project-name">${esc(projects[id].name)}</div>
+      <div class="project-delete" onclick="deleteProject('${id}', event)">×</div>
+    </div>`).join('');
+}
+
+function save() {
+  try { localStorage.setItem('pm_projects', JSON.stringify(projects)); } catch(e) {}
+}
+
+function updateBadge() {
+  if (!currentId) return;
+  const p = projects[currentId];
+  const badge = document.getElementById('iterBadge');
+  const badgeNum = document.getElementById('iterNum');
+  if (p.phase === 'awaiting_answers') {
+    badge.style.display = 'flex';
+    badge.innerHTML = 'Step 2 of 3 — Clarifying questions';
+  } else if (p.phase === 'awaiting_verification') {
+    badge.style.display = 'flex';
+    badge.innerHTML = 'Step 3 of 3 — Review brief before PRD';
+  } else if (p.phase === 'complete') {
+    badge.style.display = 'flex';
+    badge.innerHTML = 'PRD complete — refine anytime';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// ── DOM HELPERS ────────────────────────────────────────────────────────────────
+function clearMessages() {
+  const wrap = document.getElementById('messagesWrap');
+  Array.from(wrap.querySelectorAll('.msg, .msg-label-outer')).forEach(el => el.remove());
+}
+
+function appendUser(text) {
+  const wrap = document.getElementById('messagesWrap');
+  const d = document.createElement('div');
+  d.className = 'msg user';
+  d.innerHTML = `<div class="msg-label">You</div><div class="msg-bubble">${esc(text)}</div>`;
+  wrap.appendChild(d);
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function appendAI(text, isPRD, status) {
+  const wrap = document.getElementById('messagesWrap');
+  const d = document.createElement('div');
+  d.className = 'msg ai';
+  let pill = '';
+  if (status === 'rejected') pill = '<div class="status-pill pill-rejected">⚠ Needs more detail</div>';
+  else if (status === 'caution') pill = '<div class="status-pill pill-caution">◎ Proceeding with caution</div>';
+  else if (status === 'proceed') pill = '<div class="status-pill pill-proceed">✓ Clear to proceed</div>';
+  const cls = isPRD ? 'msg-bubble prd' : 'msg-bubble';
+  const btn = isPRD ? '<button class="copy-btn" onclick="copyPRD(this)">Copy PRD to clipboard</button>' : '';
+  const content = isPRD ? renderMarkdown(text) : fmt(text);
+  d.innerHTML = `<div class="msg-label">PM Assistant</div>${pill}<div class="${cls}">${content}</div>${btn}`;
+  wrap.appendChild(d);
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function showTyping() {
+  const wrap = document.getElementById('messagesWrap');
+  const d = document.createElement('div');
+  d.className = 'msg ai';
+  d.id = 'typingMsg';
+  d.innerHTML = `<div class="msg-label">PM Assistant</div><div class="typing-indicator"><span></span><span></span><span></span></div>`;
+  wrap.appendChild(d);
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function removeTyping() {
+  const t = document.getElementById('typingMsg');
+  if (t) t.remove();
+}
+
+function addAI(text, isPRD, status) {
+  if (!currentId) return;
+  projects[currentId].messages.push({ role: 'ai', content: text, isPRD: isPRD || false, status: status || null });
+  save();
+  appendAI(text, isPRD || false, status || null);
+}
+
+function copyPRD(btn) {
+  // Find the stored raw markdown from project messages
+  const p = projects[currentId];
+  // Find the last PRD message
+  const prdMsg = [...p.messages].reverse().find(m => m.isPRD);
+  const raw = prdMsg ? prdMsg.content : btn.previousElementSibling.innerText;
+  navigator.clipboard.writeText(raw).then(() => {
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => btn.textContent = 'Copy PRD to clipboard', 2000);
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = raw;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => btn.textContent = 'Copy PRD to clipboard', 2000);
+  });
+}
+
+function esc(t) { return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmt(t) { return esc(t).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>'); }
+
+function renderMarkdown(md) {
+  const lines = md.split('\n');
+  let html = '';
+  let inTable = false;
+  let inList = false;
+  let tableHeader = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i];
+
+    // Table rows
+    if (line.trim().startsWith('|')) {
+      const cells = line.split('|').filter((_,idx,arr) => idx > 0 && idx < arr.length - 1).map(c => c.trim());
+      // Skip separator rows like |---|---|
+      if (cells.every(c => /^[-:]+$/.test(c))) { tableHeader = false; continue; }
+      if (!inTable) { html += '<table>'; inTable = true; tableHeader = true; }
+      if (tableHeader) {
+        html += '<thead><tr>' + cells.map(c => '<th>' + inlineMd(c) + '</th>').join('') + '</tr></thead><tbody>';
+        tableHeader = false;
+      } else {
+        html += '<tr>' + cells.map(c => '<td>' + inlineMd(c) + '</td>').join('') + '</tr>';
+      }
+      continue;
+    } else if (inTable) {
+      html += '</tbody></table>'; inTable = false;
+    }
+
+    // Headings
+    if (line.startsWith('# ')) { if(inList){html+='</ul>';inList=false;} html += '<h1>' + inlineMd(line.slice(2)) + '</h1>'; continue; }
+    if (line.startsWith('## ')) { if(inList){html+='</ul>';inList=false;} html += '<h2>' + inlineMd(line.slice(3)) + '</h2>'; continue; }
+    if (line.startsWith('### ')) { if(inList){html+='</ul>';inList=false;} html += '<h3>' + inlineMd(line.slice(4)) + '</h3>'; continue; }
+
+    // HR
+    if (line.trim() === '---') { if(inList){html+='</ul>';inList=false;} html += '<hr>'; continue; }
+
+    // List items
+    if (line.match(/^[-*] /)) {
+      if (!inList) { html += '<ul>'; inList = true; }
+      html += '<li>' + inlineMd(line.slice(2)) + '</li>';
+      continue;
+    }
+    if (line.match(/^\d+\. /)) {
+      if (!inList) { html += '<ol>'; inList = true; }
+      html += '<li>' + inlineMd(line.replace(/^\d+\. /,'')) + '</li>';
+      continue;
+    }
+
+    // Close list
+    if (inList && line.trim() === '') { html += '</ul>'; inList = false; }
+
+    // Blank line
+    if (line.trim() === '') { html += ''; continue; }
+
+    // Paragraph
+    if (!inList) html += '<p>' + inlineMd(line) + '</p>';
+  }
+
+  if (inTable) html += '</tbody></table>';
+  if (inList) html += '</ul>';
+  return html;
+}
+
+function inlineMd(t) {
+  return esc(t)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code>$1</code>');
+}
+
+// ── INPUT ──────────────────────────────────────────────────────────────────────
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+async function sendMessage() {
+  if (!currentId) { alert('Please create a project first using the "+ New" button.'); return; }
+  if (!apiKey) { openModal(); return; }
+  const input = document.getElementById('userInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  autoResize(input);
+  document.getElementById('sendBtn').disabled = true;
+  appendUser(text);
+  projects[currentId].messages.push({ role: 'user', content: text });
+  save();
+  showTyping();
+  try {
+    await route(text);
+  } catch(err) {
+    removeTyping();
+    const msg = err.message.includes('401') ? 'Invalid API key — click ⚙ API Key to update it.' : 'Error: ' + err.message;
+    addAI(msg);
+  }
+  document.getElementById('sendBtn').disabled = false;
+  document.getElementById('userInput').focus();
+}
+
+// ── ROUTING ────────────────────────────────────────────────────────────────────
+async function route(text) {
+  const p = projects[currentId];
+  if (p.phase === 'awaiting_statement') await evalStatement(text);
+  else if (p.phase === 'awaiting_answers') await genBrief(text);
+  else if (p.phase === 'awaiting_verification') await genPRD(text);
+  else await followUp(text);
+  updateBadge();
+}
+
+// ── PHASE 1: EVALUATE STATEMENT ────────────────────────────────────────────────
+async function evalStatement(stmt) {
+  const sys = `You are PM Assistant, an expert AI PRD co-pilot.
+Evaluate this problem statement against 3 criteria:
+1. Does it identify a specific user/user group? (not just "users" or "people")
+2. Does it describe a specific pain or problem? (not a vague improvement or just a solution)
+3. Is there a hint of business impact or what success looks like?
+
+Respond ONLY with valid JSON, no markdown, no extra text:
+{"verdict":"rejected"|"caution"|"proceed","response":"your message to the PM — if rejected ask what's missing, if caution acknowledge strengths and flag gaps, if proceed confirm and say you're moving to questions"}`;
+
+  const raw = await claude(sys, [{ role: 'user', content: stmt }]);
+  removeTyping();
+
+  let parsed;
+  try {
+    const clean = raw.replace(/```json|```/g, '').trim();
+    parsed = JSON.parse(clean);
+  } catch(e) {
+    parsed = { verdict: 'proceed', response: raw };
+  }
+
+  const p = projects[currentId];
+
+  if (parsed.verdict === 'rejected') {
+    addAI(parsed.response, false, 'rejected');
+  } else {
+    const status = parsed.verdict === 'caution' ? 'caution' : 'proceed';
+    addAI(parsed.response, false, status);
+    p.phase = 'awaiting_answers';
+    p.iteration = 0;
+    p.problemStatement = stmt;
+    save();
+    showTyping();
+    await assessAINeed(stmt);
+  }
+}
+
+// ── PHASE 1B: ASSESS WHETHER AI IS NEEDED ─────────────────────────────────────
+async function assessAINeed(stmt) {
+  const sys = `You are PM Assistant, an expert product management advisor.
+
+Evaluate whether this problem needs AI or can be solved with deterministic rules/logic.
+
+Apply these 4 criteria honestly:
+1. Can rules fully solve this? If the logic can be written as IF/THEN conditions covering all cases, rules win.
+2. Is the input unstructured? Free text, images, complex behavioural patterns = AI territory. Structured inputs with clear logic = rules territory.
+3. Is there enough data to learn from? AI needs thousands of labelled examples to outperform rules.
+4. What is the cost of being wrong? High-stakes errors with AI need heavy guardrails — sometimes rules are safer.
+
+Respond ONLY with valid JSON, no markdown, no extra text:
+{
+  "verdict": "ai" | "rules" | "hybrid",
+  "reasoning": "2-3 sentences explaining exactly why, referencing the specific problem",
+  "ai_tax": "one sentence on the ongoing cost/complexity AI would add if verdict is rules or hybrid",
+  "response": "your message to the PM — be direct and specific. If rules: explain what kind of rules solve this and why AI would be overkill. If AI: confirm which pattern fits (copilot/autopilot/RAG/generation/personalisation) and why. If hybrid: explain which parts need AI and which need rules."
+}`;
+
+  const raw = await claude(sys, [{ role: 'user', content: stmt }]);
+  removeTyping();
+
+  let parsed;
+  try {
+    const clean = raw.replace(/```json|```/g, '').trim();
+    parsed = JSON.parse(clean);
+  } catch(e) {
+    parsed = { verdict: 'ai', response: raw, reasoning: '' };
+  }
+
+  const p = projects[currentId];
+  p.prdType = parsed.verdict; // 'ai', 'rules', or 'hybrid'
+  save();
+
+  // Show assessment result with appropriate badge
+  const badge = parsed.verdict === 'rules' ? 'caution' : 'proceed';
+  addAI(parsed.response, false, badge);
+
+  // Now ask clarifying questions appropriate to the PRD type
+  showTyping();
+  await askQuestions(stmt, parsed.verdict);
+}
+
+// ── PHASE 1C: ASK QUESTIONS BASED ON PRD TYPE ──────────────────────────────────
+async function askQuestions(stmt, prdType) {
+  let sys;
+
+  if (prdType === 'rules') {
+    sys = `You are PM Assistant. The problem does NOT need AI — it can be solved with rules and deterministic logic.
+Generate exactly 5 clarifying questions to write a standard Product Requirements Document.
+
+The 5 questions must cover:
+1. Who is the primary user — their role, technical level, and daily context
+2. What does success look like in 90 days — specific metric and target number
+3. What are the edge cases and exception flows that need to be handled?
+4. What systems or data does this feature depend on?
+5. What is the biggest constraint — timeline, technical, regulatory, or organisational?
+
+Format exactly as:
+"I'll write a standard PRD for this — no AI needed here, rules will handle it better. Here are 5 questions to complete it.\n\n1. [question]\n2. [question]\n3. [question]\n4. [question]\n5. [question]"
+
+Reference specific details from their problem statement. Do not be generic.`;
+  } else if (prdType === 'hybrid') {
+    sys = `You are PM Assistant. This problem needs a HYBRID approach — some parts use rules, some use AI.
+Generate exactly 5 clarifying questions to write a hybrid PRD.
+
+The 5 questions must cover:
+1. Who is the primary user — their role, technical level, and daily context
+2. Which specific parts of this feature need AI vs which can use rules? Prompt them to think about this.
+3. What does success look like in 90 days — specific metric and target
+4. What data is available and what systems are accessible?
+5. Where must a human stay in the loop, and what is the biggest risk?
+
+Format exactly as:
+"This needs a hybrid approach — rules for the deterministic parts, AI for the complex parts. Here are 5 questions to complete your PRD.\n\n1. [question]\n2. [question]\n3. [question]\n4. [question]\n5. [question]"
+
+Reference specific details from their problem statement. Do not be generic.`;
+  } else {
+    sys = `You are PM Assistant. This problem genuinely needs AI.
+Generate exactly 5 clarifying questions to write a complete AI PRD.
+
+The 5 questions must cover:
+1. Who is the primary user — their role, technical level, and daily context
+2. What does success look like in 90 days — specific metric and target number
+3. What data or systems are available vs explicitly off-limits
+4. Should the AI suggest (human decides) or act autonomously — where must humans stay in loop
+5. What is the single biggest risk to this feature working
+
+Format exactly as:
+"Here are 5 questions to complete your AI PRD. Answer all of them and I'll generate your full 10-section PRD.\n\n1. [question]\n2. [question]\n3. [question]\n4. [question]\n5. [question]"
+
+Reference specific details from their problem statement. Do not be generic.`;
+  }
+
+  const result = await claude(sys, [{ role: 'user', content: stmt }]);
+  removeTyping();
+  addAI(result);
+}
+
+// ── PHASE 2A: GENERATE VERIFICATION BRIEF ────────────────────────────────────
+async function genBrief(answers) {
+  const p = projects[currentId];
+  p.answers = answers;
+  p.iteration++;
+  save();
+
+  const prdType = p.prdType || 'ai';
+
+  const sys = `You are PM Assistant. The PM has answered your clarifying questions.
+Before writing the full PRD, generate a structured verification brief.
+
+This brief shows every key assumption you are about to bake into the PRD, with your reasoning for each.
+The PM will review, correct anything wrong, then you will generate the PRD.
+
+Format the brief EXACTLY like this — no other format:
+
+**Before I write your PRD, here's what I'm assuming. Correct anything that's wrong or missing, then say "looks good" to generate.**
+
+---
+
+**User**
+[who the primary user is — their role, context, technical level]
+→ *Reasoning: [why you think this based on what they said]*
+
+**Problem being solved**
+[specific pain point in one sentence]
+→ *Reasoning: [direct quote or paraphrase from their input]*
+
+**AI approach** (or Rules approach if not AI)
+[which pattern: RAG / classification / generation / agentic / rules-based / hybrid]
+→ *Reasoning: [why this pattern fits the problem]*
+
+**Interaction model**
+[copilot suggestion-only / autopilot / hybrid — and what that means for this product]
+→ *Reasoning: [based on their answer about human-in-the-loop]*
+
+**Primary success metric**
+[the one number that matters most in 90 days]
+→ *Reasoning: [from their answer on success metrics]*
+
+**Data available**
+[list the key data sources and what each enables]
+→ *Reasoning: [from their answer on data access]*
+
+**Biggest risk**
+[the single biggest threat to this working]
+→ *Reasoning: [from their answer or inferred from the problem]*
+
+**Key assumptions I'm making**
+- [assumption 1 — something not explicitly stated but inferred]
+- [assumption 2]
+- [assumption 3]
+
+---
+
+Reply with any corrections or type **"looks good"** to generate your full PRD.
+
+Be specific and reference actual details from their problem statement and answers. No generic placeholders.`;
+
+  const history = [
+    { role: 'user', content: 'Problem statement: ' + p.problemStatement },
+    { role: 'assistant', content: 'Thank you. I have your answers to the clarifying questions.' },
+    { role: 'user', content: 'My answers: ' + answers }
+  ];
+
+  const result = await claude(sys, history);
+  removeTyping();
+  p.phase = 'awaiting_verification';
+  save();
+  addAI(result);
+}
+
+// ── PHASE 2: GENERATE PRD (ROUTES BY TYPE) ────────────────────────────────────
+async function genPRD(answers) {
+  const p = projects[currentId];
+  p.iteration++;
+  save();
+
+  const prdType = p.prdType || 'ai';
+
+  let sys;
+
+  if (prdType === 'rules') {
+    sys = `You are PM Assistant. Generate a complete, specific, production-ready standard PRD (no AI involved).
+
+Use this exact structure — every section specific to their product, no generic placeholders:
+
+# PRD: [Feature Name]
+
+## 1. Introduction
+- Business problem with data showing scale/urgency
+- Primary user and their specific context
+- What this feature does in one plain English sentence
+- Why rules/logic is the right approach (not AI) — one sentence
+- Interaction model: how user interacts with the feature
+
+## 2. Objectives
+- Business outcome goals with specific targets and timelines
+- Feature adoption target with percentage and timeline
+- Success metrics with targets: completion rate, error rate, time-on-task, user satisfaction
+- Counter-metric: what must not be sacrificed
+
+## 3. Assumptions
+- User assumption: what we assume about the user's technical level and context
+- Data assumption: what structured data is available and its quality
+- System assumption: what integrations and APIs are available
+- Constraint assumption: timeline, regulatory, or operational constraints
+
+## 4. Functional Requirements
+**Core user flows:** Step-by-step description of each primary user journey
+**Business rules:** Explicit IF/THEN logic for every decision the system makes — be exhaustive
+**Edge cases:** Every exception flow defined with its handling
+**Validation rules:** What inputs are accepted, rejected, or flagged
+
+## 5. Non-Functional Requirements
+- Performance: page load time, transaction speed, concurrent users supported
+- Reliability: uptime target, error rate ceiling, data consistency requirements
+- Security: authentication, authorisation, data privacy requirements
+- Accessibility: standards compliance, device support
+
+## 6. Error Handling
+| Error Scenario | Likelihood | User-Facing Message | System Action |
+(minimum 6 rows — every error must have a recovery path)
+
+## 7. Dependencies
+For each: system name | what it provides | owner | SLA | fallback if unavailable
+
+## 8. Future Expectations
+Phase 1 (Launch): exact scope, what is explicitly out of scope
+Phase 2: what gets added based on Phase 1 learning
+Phase 3: long-term vision, potential AI additions if data matures
+
+## 9. Metrics Framework
+
+**Business outcome metrics — lagging, monthly:**
+| Metric | Target | Measurement Method | Alert Threshold |
+
+**Feature health metrics — lagging, weekly:**
+| Metric | Target | Measurement Method | Alert Threshold |
+
+**System health metrics — leading, daily:**
+| Metric | Target | Measurement Method | Alert Threshold |
+
+## 10. Go / No-Go Criteria
+**Must pass (non-negotiable):** 4-6 hard criteria
+**Should pass (strong preference):** 3-4 criteria
+**Acceptable to miss at launch:** items that improve post-launch`;
+
+  } else if (prdType === 'hybrid') {
+    sys = `You are PM Assistant. Generate a complete hybrid PRD — rules for deterministic parts, AI for complex parts.
+
+Use this exact structure:
+
+# PRD: [Feature Name] (Hybrid — Rules + AI)
+
+## 1. Introduction
+- Business problem with data showing scale/urgency
+- Primary user and their specific context
+- What this feature does in one plain English sentence
+- Which parts use rules and which use AI — stated explicitly upfront
+- Interaction model: copilot / autopilot / suggestion-only
+
+## 2. Objectives
+- Business outcome goals with specific targets and timelines
+- Feature adoption target
+- Rules performance metrics: error rate, processing speed, accuracy
+- AI performance metrics: acceptance rate (with upper and lower bound), classification accuracy, latency
+- Counter-metric: what must not be sacrificed
+
+## 3. Assumptions
+- Data sufficiency for AI components: minimum volume stated as a number
+- Rules coverage: what percentage of cases are handled deterministically
+- Language: which languages in scope
+- Latency: response time for both rules engine and AI components
+- Model version: pinned to claude-sonnet-4-6
+
+## 4. System Architecture
+**Rules layer:** List every decision handled by deterministic logic with the exact IF/THEN rule
+**AI layer:** List every decision handled by AI with the input, expected output, and why rules cannot handle it
+**Handoff points:** Where does the rules layer hand off to AI and vice versa?
+
+## 5. Functional Requirements
+**Core user flows:** Step-by-step primary journeys
+**Business rules (deterministic):** Exhaustive IF/THEN logic
+**AI behaviour definition:** What good AI output looks like, what bad looks like, how evaluated
+
+## 6. Failure Modes and Guardrails
+| Failure Mode | Component (Rules/AI) | Likelihood | Guardrail | How it's enforced |
+(minimum 8 rows — AI guardrails must be engineered constraints, not hoped-for behaviour)
+
+## 7. Human in the Loop Design
+- Which decisions always require human review
+- Escalation triggers with specific conditions
+- Fallback when AI is unavailable (rules-only mode)
+
+## 8. Dependencies
+For each: system name | what it provides | owner | SLA | fallback
+
+## 9. Metrics Framework
+
+**Business outcome metrics — lagging, monthly:**
+| Metric | Target | Measurement Method | Alert Threshold |
+
+**Rules engine metrics — lagging, weekly:**
+| Metric | Target | Measurement Method | Alert Threshold |
+
+**AI performance metrics — lagging, weekly:**
+| Metric | Target | Measurement Method | Alert Threshold |
+
+**System health metrics — leading, daily:**
+| Metric | Target | Measurement Method | Alert Threshold |
+
+## 10. Go / No-Go Criteria
+**Must pass (non-negotiable):** 4-6 hard criteria
+**Should pass (strong preference):** 3-4 criteria
+**Acceptable to miss at launch:** items that improve post-launch`;
+
+  } else {
+    // AI PRD — original template
+    sys = `You are PM Assistant. Generate a complete, specific, production-ready 10-section AI PRD.
+
+Use this exact structure — every section must be specific to their product, no generic placeholders:
+
+# AI PRD: [Feature Name]
+
+## 1. Introduction
+- Business problem with data showing scale/urgency
+- Primary user and their specific context
+- What the AI feature does in one plain English sentence
+- AI approach in one sentence (RAG / classification / generation / agentic)
+- Interaction model stated explicitly (copilot suggestion-only / autopilot / hybrid)
+
+## 2. Objectives
+- Business outcome goals with specific targets and timelines
+- Feature adoption target (% of target users, by when)
+- AI metrics: suggestion acceptance rate (range with upper AND lower bound + why both matter), rejection rate ceiling, classification accuracy target, latency target in seconds, fallback rate ceiling
+- Counter-metric: what must not be sacrificed while optimising for the above
+
+## 3. Assumptions
+- Data sufficiency: minimum volume stated as a number
+- Language: which languages in scope, how code-switching handled
+- Latency: exact response time requirement
+- Data freshness: update cadence
+- Model version: pinned to claude-sonnet-4-6, upgrade process defined
+
+## 4. Output Definition and Evaluation Criteria
+**What good looks like:** 2-3 specific examples with measurable thresholds and timelines
+**What bad looks like:** 2-3 specific failure examples with measurable thresholds
+**Evaluation at scale:** human review sample size + cadence, automated checks, downstream proxy metrics, labelled test set size
+
+## 5. Failure Modes and Guardrails
+| Failure Mode | Likelihood | Guardrail | How it's enforced |
+(minimum 8 rows — every guardrail must be an engineered constraint, not hoped-for model behaviour)
+
+## 6. Human in the Loop Design
+- Explicit touchpoints where human reviews/approves/overrides (list each)
+- Escalation triggers with specific conditions
+- What the human sees when making each decision
+- Rejection feedback loop and retraining cadence
+- Fallback experience when AI is unavailable
+
+## 7. Dependencies
+For each dependency: system name | what it provides | owner | SLA | fallback
+Must include: data ingestion pipeline, model provider, embedding model (if RAG), vector DB (if RAG), validation/rule engine, UI team, notification system, any third-party APIs
+
+## 8. Future Expectations
+Phase 1 (Launch): scope boundaries, interaction model, constraints
+Phase 2 (After accuracy threshold): what changes, new capabilities added
+Phase 3 (Scaled): automation scope, premium features, human role at this stage
+
+## 9. Metrics Framework
+
+**Business outcome metrics — lagging, monthly:**
+| Metric | Target | Measurement Method | Alert Threshold |
+
+**AI performance metrics — lagging, weekly:**
+| Metric | Target | Measurement Method | Alert Threshold |
+
+**System health metrics — leading, daily:**
+| Metric | Target | Measurement Method | Alert Threshold |
+
+**Trust and adoption metrics — lagging, weekly:**
+| Metric | Target | Measurement Method | Alert Threshold |
+
+**Counter-metric:**
+| Metric | Healthy Range | Measurement Method | Alert Threshold |
+
+## 10. Go / No-Go Criteria
+**Must pass (non-negotiable):** 4-6 hard criteria — if any fail, no launch
+**Should pass (strong preference):** 3-4 criteria — 3 of 4 met = proceed
+**Acceptable to miss at launch:** metrics that improve over time, do not block launch`;
+  }
+
+  const typeLabel = prdType === 'rules' ? 'standard PRD' : prdType === 'hybrid' ? 'hybrid PRD' : 'AI PRD';
+
+  // answers here = the verification response ("looks good" or corrections)
+  const verificationNote = answers.toLowerCase().includes('looks good')
+    ? 'The PM confirmed the brief looks good. Proceed with the PRD as planned.'
+    : 'The PM provided these corrections to the brief: ' + answers + '. Update your assumptions accordingly before generating the PRD.';
+
+  const history = [
+    { role: 'user', content: 'Problem statement: ' + p.problemStatement },
+    { role: 'assistant', content: 'Thank you. I have your clarifying answers.' },
+    { role: 'user', content: 'My answers: ' + (p.answers || answers) },
+    { role: 'assistant', content: 'I have prepared a verification brief for your review.' },
+    { role: 'user', content: verificationNote }
+  ];
+
+  const result = await claude(sys, history);
+  removeTyping();
+  p.phase = 'complete';
+  save();
+  addAI(result, true, null);
+  addAI("Your **" + typeLabel + "** is ready. Click **Copy PRD to clipboard** to paste into Notion, Confluence, or Google Docs.\n\nWant to refine a section? Tell me what to change — for example: \"Make the error handling table more specific\" or \"Rewrite the dependencies section.\"");
+}
+
+// ── PHASE 3: FOLLOW UP ─────────────────────────────────────────────────────────
+async function followUp(text) {
+  const p = projects[currentId];
+  const prdType = p.prdType || 'ai';
+  const typeDesc = prdType === 'rules' ? 'standard rules-based PRD' : prdType === 'hybrid' ? 'hybrid rules + AI PRD' : 'AI PRD';
+  const sys = `You are PM Assistant. The user has a complete ${typeDesc} and wants to refine it. Help them improve the specific section they mention. Be specific and actionable. If they want a section rewritten, rewrite just that section in full using the same professional format. Keep responses focused.`;
+  const recent = p.messages.slice(-8).map(m => ({ role: m.role === 'ai' ? 'assistant' : 'user', content: m.content }));
+  const result = await claude(sys, [...recent, { role: 'user', content: text }]);
+  removeTyping();
+  addAI(result);
+}
+
+// ── CLAUDE API ─────────────────────────────────────────────────────────────────
+async function claude(system, messages) {
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4000, system, messages })
+  });
+  if (!resp.ok) {
+    const e = await resp.json().catch(() => ({}));
+    throw new Error(e.error?.message || 'HTTP ' + resp.status);
+  }
+  const d = await resp.json();
+  return d.content[0].text;
+}
+
+// ── INIT ───────────────────────────────────────────────────────────────────────
+renderSidebar();
+if (!apiKey) openModal();
+</script>
+</body>
+</html>
